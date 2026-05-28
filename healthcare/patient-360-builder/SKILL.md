@@ -1,90 +1,64 @@
 ---
 name: patient-360-builder
 description: Build a unified Patient 360 view from BRONZE layer tables in DEMO_DEV.VALUE_BASED_CARE. Analyzes source schemas, designs a patient-centric data model, creates a PATIENT_360 dynamic table (one row per patient), a Cortex Search service for natural language patient lookup, and a semantic view for Cortex Analyst. Use when asked to build, create, or generate a patient 360 view, unified patient profile, patient summary, or patient-centric data model.
----
-
-# Patient 360 Builder Skill
-
-## Overview
+Patient 360 Builder Skill
+Overview
 This skill builds a production-grade, unified Patient 360 data asset from BRONZE layer source tables in `DEMO_DEV.VALUE_BASED_CARE`. It produces:
-1. A schema analysis report
-2. A canonical patient-centric data model design
-3. SQL for a PATIENT_360 dynamic table
-4. A Cortex Search service definition
-5. A Cortex Analyst semantic view
-6. Example natural language queries
-
-## Source Tables
-
+A schema analysis report
+A canonical patient-centric data model design
+SQL for a PATIENT_360 dynamic table
+A Cortex Search service definition
+A Cortex Analyst semantic view
+Example natural language queries
+Source Tables
 All tables reside in `DEMO_DEV.VALUE_BASED_CARE`:
-
-| Table | Grain | Primary Key | Join Key |
-|-------|-------|-------------|----------|
-| BRONZE_PATIENTS | One row per patient | ID | ID (= PATIENT_ID elsewhere) |
-| BRONZE_MEMBER_MASTER | One row per member enrollment | ID | PATIENT_ID, MEMBER_ID |
-| BRONZE_ELIGIBILITY_HISTORY | One row per eligibility period | ID | PATIENT_ID, MEMBER_ID |
-| BRONZE_DIAGNOSIS_HISTORY | One row per diagnosis event | ID | PATIENT_ID |
-| BRONZE_MEDICATIONS | One row per medication record | ID | PATIENT_ID |
-| BRONZE_RISK_SCORES | One row per risk assessment date | ID | PATIENT_ID |
-| BRONZE_CARE_GAPS | One row per care gap measure | ID | PATIENT_ID |
-| BRONZE_PATIENT_SDOH_PROFILE | One row per patient SDOH profile | ID | PATIENT_ID |
-| BRONZE_PRIOR_AUTHORIZATIONS | One row per prior auth request | ID | PATIENT_ID, MEMBER_ID |
-| BRONZE_CARE_PLANS | One row per care plan | ID | PATIENT_ID |
-| BRONZE_PROVIDER_MASTER | One row per provider | ID | ID (referenced via ASSIGNED_PHYSICIAN_ID, PRESCRIBING_PHYSICIAN_ID, etc.) |
-| BRONZE_PATIENT_STATE | One row per patient (current state) | PATIENT_ID | PATIENT_ID |
-
-## Key Relationships
-
-- `PATIENT_ID` (NUMBER) is the universal join key across all patient-facing tables
-- `MEMBER_ID` (VARCHAR) links to payer/eligibility domain
-- `BRONZE_PATIENT_STATE` contains current risk score, risk level, care gap %, and care team assignments
-- `BRONZE_PATIENT_SDOH_PROFILE.PROFILE_DATA` is a VARIANT containing nested JSON with sdohRadar scores and social determinant details
-- Provider assignments flow through `BRONZE_PATIENT_STATE.ASSIGNED_PHYSICIAN_ID` -> `BRONZE_PROVIDER_MASTER.ID`
-
-## Schema Details
-
-### BRONZE_PATIENTS
+Table	Grain	Primary Key	Join Key
+BRONZE_PATIENTS	One row per patient	ID	ID (= PATIENT_ID elsewhere)
+BRONZE_MEMBER_MASTER	One row per member enrollment	ID	PATIENT_ID, MEMBER_ID
+BRONZE_ELIGIBILITY_HISTORY	One row per eligibility period	ID	PATIENT_ID, MEMBER_ID
+BRONZE_DIAGNOSIS_HISTORY	One row per diagnosis event	ID	PATIENT_ID
+BRONZE_MEDICATIONS	One row per medication record	ID	PATIENT_ID
+BRONZE_RISK_SCORES	One row per risk assessment date	ID	PATIENT_ID
+BRONZE_CARE_GAPS	One row per care gap measure	ID	PATIENT_ID
+BRONZE_PATIENT_SDOH_PROFILE	One row per patient SDOH profile	ID	PATIENT_ID
+BRONZE_PRIOR_AUTHORIZATIONS	One row per prior auth request	ID	PATIENT_ID, MEMBER_ID
+BRONZE_CARE_PLANS	One row per care plan	ID	PATIENT_ID
+BRONZE_PROVIDER_MASTER	One row per provider	ID	ID (referenced via ASSIGNED_PHYSICIAN_ID, PRESCRIBING_PHYSICIAN_ID, etc.)
+BRONZE_PATIENT_STATE	One row per patient (current state)	PATIENT_ID	PATIENT_ID
+Key Relationships
+`PATIENT_ID` (NUMBER) is the universal join key across all patient-facing tables
+`MEMBER_ID` (VARCHAR) links to payer/eligibility domain
+`BRONZE_PATIENT_STATE` contains current risk score, risk level, care gap %, and care team assignments
+`BRONZE_PATIENT_SDOH_PROFILE.PROFILE_DATA` is a VARIANT containing nested JSON with sdohRadar scores and social determinant details
+Provider assignments flow through `BRONZE_PATIENT_STATE.ASSIGNED_PHYSICIAN_ID` -> `BRONZE_PROVIDER_MASTER.ID`
+Schema Details
+BRONZE_PATIENTS
 ID, MRN, FIRST_NAME, LAST_NAME, DATE_OF_BIRTH, GENDER, AGE, PHONE, EMAIL, ADDRESS, INSURANCE, PRIMARY_CONDITIONS (VARIANT), FRAILTY_SCORE, POLYPHARMACY_RISK_SCORE, LAST_VISIT_DATE, LAST_HOSPITAL_DISCHARGE, IS_DEMO_PATIENT, USER_ID, CREATED_AT
-
-### BRONZE_MEMBER_MASTER
+BRONZE_MEMBER_MASTER
 ID, MEMBER_ID, PATIENT_ID, PAYER, PLAN_NAME, PLAN_TYPE, GROUP_NUMBER, SUBSCRIBER_ID, RELATIONSHIP_CODE, EFFECTIVE_DATE, TERMINATION_DATE, LOB, MBI, HIC_NUMBER, IS_ACTIVE, CREATED_AT, UPDATED_AT
-
-### BRONZE_ELIGIBILITY_HISTORY
+BRONZE_ELIGIBILITY_HISTORY
 ID, MEMBER_ID, PATIENT_ID, PAYER, PLAN_TYPE, ELIGIBILITY_START, ELIGIBILITY_END, ELIGIBILITY_STATUS, TERMINATION_REASON, VERIFIED_DATE, BENEFIT_YEAR, PREMIUM_AMOUNT, SOURCE_SYSTEM, CREATED_AT
-
-### BRONZE_DIAGNOSIS_HISTORY
+BRONZE_DIAGNOSIS_HISTORY
 ID, PATIENT_ID, ENCOUNTER_ID, ICD10_CODE, ICD10_DESCRIPTION, DIAGNOSIS_TYPE, DIAGNOSIS_DATE, ENCOUNTER_TYPE, HCC_CODE, HCC_DESCRIPTION, CHRONIC_FLAG, RECORDED_BY_ID, CONFIRMED_FLAG, NOTES, CREATED_AT
-
-### BRONZE_MEDICATIONS
+BRONZE_MEDICATIONS
 ID, PATIENT_ID, NAME, GENERIC_NAME, DRUG_CLASS, DOSE, FREQUENCY, ROUTE, PRESCRIBING_PHYSICIAN_ID, ADHERENCE_PCT, INTERACTION_RISK, STATUS, STARTED_DATE, NOTES, CREATED_AT, UPDATED_AT
-
-### BRONZE_RISK_SCORES
+BRONZE_RISK_SCORES
 ID, PATIENT_ID, SCORE, RISK_LEVEL, READMISSION_PROBABILITY, DATE, RISK_DRIVERS
-
-### BRONZE_CARE_GAPS
+BRONZE_CARE_GAPS
 ID, PATIENT_ID, MEASURE_CODE, MEASURE_NAME, STATUS, DUE_DATE, LAST_COMPLETED_DATE, CLOSED_AT, PROPENSITY, NOTES, CREATED_AT
-
-### BRONZE_PATIENT_SDOH_PROFILE
+BRONZE_PATIENT_SDOH_PROFILE
 ID, PATIENT_ID, PROFILE_DATA (VARIANT - contains sdohRadar with ADI score, Financial/Social/Housing/Food/Transport metrics, and view with immediateNeeds, profile details), UPDATED_AT
-
-### BRONZE_PRIOR_AUTHORIZATIONS
+BRONZE_PRIOR_AUTHORIZATIONS
 ID, PATIENT_ID, MEMBER_ID, PAYER, AUTH_NUMBER, PROCEDURE_NAME, PROCEDURE_CODE, PROCEDURE_CATEGORY, ICD10_PRIMARY, ICD10_SECONDARY, REQUESTING_PROVIDER_ID, FACILITY_NAME, URGENCY, STATUS, SUBMITTED_DATE, DECISION_DATE, EXPIRATION_DATE, APPROVED_UNITS, DENIAL_REASON, APPEAL_STATUS, NOTES, CREATED_AT, UPDATED_AT
-
-### BRONZE_CARE_PLANS
+BRONZE_CARE_PLANS
 ID, PATIENT_ID, PHYSICIAN_ID, CREATED_BY_ID, TITLE, DESCRIPTION, STATUS, SUBMITTED_AT, APPROVED_AT, ACTIVATED_AT, COMPLETED_AT, CREATED_AT, UPDATED_AT
-
-### BRONZE_PROVIDER_MASTER
+BRONZE_PROVIDER_MASTER
 ID, USER_ID, FULL_NAME, ROLE, SPECIALTY, DEPARTMENT, IS_ACTIVE, CREATED_AT
-
-### BRONZE_PATIENT_STATE
+BRONZE_PATIENT_STATE
 ID, PATIENT_ID, CURRENT_STATE, ASSIGNED_PHYSICIAN_ID, ASSIGNED_CARE_MANAGER_ID, ASSIGNED_MTM_ID, ASSIGNED_SOCIAL_WORKER_ID, READMISSION_PROBABILITY, RISK_SCORE, RISK_LEVEL, CARE_GAP_PCT, MISSED_DOSES_30D, REFILL_GAPS_COUNT, UPDATED_AT
-
 ---
-
-## Step 1: PATIENT_360 Dynamic Table
-
+Step 1: PATIENT_360 Dynamic Table
 Create a dynamic table with one row per patient. Use the following design:
-
 ```sql
 CREATE OR REPLACE DYNAMIC TABLE DEMO_DEV.VALUE_BASED_CARE.PATIENT_360
   TARGET_LAG = '1 hour'
@@ -262,13 +236,9 @@ LEFT JOIN (
 LEFT JOIN DEMO_DEV.VALUE_BASED_CARE.BRONZE_PROVIDER_MASTER prov
   ON ps.ASSIGNED_PHYSICIAN_ID = prov.ID;
 ```
-
 ---
-
-## Step 2: Cortex Search Service
-
+Step 2: Cortex Search Service
 After the PATIENT_360 dynamic table is created, build a Cortex Search service for natural language patient lookup:
-
 ```sql
 CREATE OR REPLACE CORTEX SEARCH SERVICE DEMO_DEV.VALUE_BASED_CARE.PATIENT_360_SEARCH
   ON SEARCH_TEXT
@@ -382,9 +352,7 @@ AS (
     FROM DEMO_DEV.VALUE_BASED_CARE.PATIENT_360
 );
 ```
-
-### Example Search Queries
-
+Example Search Queries
 ```sql
 -- Find everything about a specific member
 SELECT PARSE_JSON(
@@ -402,13 +370,9 @@ SELECT PARSE_JSON(
   )
 )['results'];
 ```
-
 ---
-
-## Step 3: Semantic View for Cortex Analyst
-
+Step 3: Semantic View for Cortex Analyst
 Create a semantic view enabling natural language queries against the PATIENT_360 table:
-
 ```yaml
 # Semantic Model YAML (deploy as stage file or semantic view)
 name: patient_360_semantic
@@ -942,13 +906,9 @@ tables:
         description: "Filter to patients with medication adherence below 70%"
         expr: AVG_ADHERENCE_PCT < 70
 ```
-
 ---
-
-## Step 4: Example Queries for Validation
-
+Step 4: Example Queries for Validation
 After building the assets, test with these queries:
-
 ```sql
 -- Basic patient lookup
 SELECT PATIENT_NAME, CURRENT_RISK_LEVEL, OPEN_CARE_GAPS, ACTIVE_MEDICATION_COUNT
@@ -975,32 +935,20 @@ FROM DEMO_DEV.VALUE_BASED_CARE.PATIENT_360
 WHERE SDOH_ADI_LEVEL IN ('High', 'Moderate')
 ORDER BY SDOH_ADI_SCORE DESC;
 ```
-
 ---
-
-## Execution Instructions
-
+Execution Instructions
 When this skill is invoked:
-
-1. **Set context**: Run `USE DATABASE DEMO_DEV; USE SCHEMA VALUE_BASED_CARE; USE WAREHOUSE VBC_INTELLIGENCE_WH;` to ensure all objects are created in `DEMO_DEV.VALUE_BASED_CARE`.
-
-2. **Create the PATIENT_360 dynamic table** using the SQL in Step 1. Execute it and verify row counts with `SELECT COUNT(*) FROM DEMO_DEV.VALUE_BASED_CARE.PATIENT_360;`.
-
-3. **Create the Cortex Search service** using the SQL in Step 2. All objects are created in `DEMO_DEV.VALUE_BASED_CARE`. Wait for initialization and test with a sample query.
-
-4. **Create the semantic model**: Upload the YAML in Step 3 to stage `@DEMO_DEV.VALUE_BASED_CARE.PATIENT_360_STAGE/patient_360_semantic.yaml` or create a semantic view in `DEMO_DEV.VALUE_BASED_CARE`.
-
-5. **Validate** by running the example queries in Step 4.
-
-6. **Report results** including row count, sample data, and confirmation that all objects were created successfully in `DEMO_DEV.VALUE_BASED_CARE`.
-
-**Target Schema**: All objects (PATIENT_360, PATIENT_360_SEARCH, semantic model/view) MUST be created in `DEMO_DEV.VALUE_BASED_CARE`.
-
-## Real-World Value
-
+Set context: Run `USE DATABASE DEMO_DEV; USE SCHEMA VALUE_BASED_CARE; USE WAREHOUSE VBC_INTELLIGENCE_WH;` to ensure all objects are created in `DEMO_DEV.VALUE_BASED_CARE`.
+Create the PATIENT_360 dynamic table using the SQL in Step 1. Execute it and verify row counts with `SELECT COUNT(*) FROM DEMO_DEV.VALUE_BASED_CARE.PATIENT_360;`.
+Create the Cortex Search service using the SQL in Step 2. All objects are created in `DEMO_DEV.VALUE_BASED_CARE`. Wait for initialization and test with a sample query.
+Create the semantic model: Upload the YAML in Step 3 to stage `@DEMO_DEV.VALUE_BASED_CARE.PATIENT_360_STAGE/patient_360_semantic.yaml` or create a semantic view in `DEMO_DEV.VALUE_BASED_CARE`.
+Validate by running the example queries in Step 4.
+Report results including row count, sample data, and confirmation that all objects were created successfully in `DEMO_DEV.VALUE_BASED_CARE`.
+Target Schema: All objects (PATIENT_360, PATIENT_360_SEARCH, semantic model/view) MUST be created in `DEMO_DEV.VALUE_BASED_CARE`.
+Real-World Value
 This solution:
-- Eliminates 6-12 months of BI effort to integrate claims, EHR, pharmacy, and quality data
-- Removes need for repeated JOIN logic across teams
-- Reduces cohort build time from days to minutes
-- Enables care managers to view unified patient data in one place
-- Provides natural language access via Cortex Search and Cortex Analyst
+Eliminates 6-12 months of BI effort to integrate claims, EHR, pharmacy, and quality data
+Removes need for repeated JOIN logic across teams
+Reduces cohort build time from days to minutes
+Enables care managers to view unified patient data in one place
+Provides natural language access via Cortex Search and Cortex Analyst
