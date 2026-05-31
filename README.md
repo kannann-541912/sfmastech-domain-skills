@@ -22,7 +22,12 @@ Skills targeting value-based care, clinical data platforms, and population healt
 
 ### Retail
 
-> Skills coming soon.
+Skills targeting competitor intelligence, pricing analytics, and category performance for retail businesses.
+
+| Skill | Description |
+|---|---|
+| [`retail-competitor-benchmarker`](retail/retail-competitor-benchmarker/SKILL.md) | Builds a retail competitor benchmarking solution from Gold/Silver layer tables in `DEMO_DEV.RETAIL_CATEGORY_ANALYTICS_AGENT`. Creates a `COMPETITOR_BENCHMARK_360` dynamic table, a `BRAND_VS_COMPETITOR_SCORECARD` for head-to-head pricing analysis, a Cortex Search service for natural language competitor queries, and a semantic view for Cortex Analyst. Use for benchmarking retailers, comparing competitors, analyzing competitive positioning, or assessing pricing threats. |
+
 
 ### Financial Services & Payments (FSP)
 
@@ -38,6 +43,8 @@ sfmastech-domain-skills/
 │   └── patient-360-builder/
 │       └── SKILL.md
 ├── retail/
+│   └── retail-competitor-benchmarker/
+│       └── SKILL.md
 └── fsp/
 ```
 
